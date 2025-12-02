@@ -1,0 +1,109 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: desktop-pet
+  labels:
+    app: desktop-pet
+spec:
+  replicas: 1  # Can be auto-scaled 1-5 via HPA
+  selector:
+    matchLabels:
+      app: desktop-pet
+  template:
+    metadata:
+      labels:
+        app: desktop-pet
+    spec:
+      containers:
+      - name: desktop-pet
+        image: desktop-pet:latest
+        imagePullPolicy: IfNotPresent
+        resources:
+          requests:
+            cpu: 200m
+            memory: 256Mi
+          limits:
+            cpu: 2000m  # Increased CPU limit, as Mock mode consumes CPU
+            memory: 512Mi
+        env:
+        # API mode configuration
+        - name: API_MODE
+          valueFrom:
+            configMapKeyRef:
+              name: desktop-pet-config
+              key: api_mode
+        - name: PORT
+          valueFrom:
+            configMapKeyRef:
+              name: desktop-pet-config
+              key: port
+        # Mock mode configuration (for load testing)
+        - name: USE_MOCK_AI
+          valueFrom:
+            configMapKeyRef:
+              name: desktop-pet-config
+              key: use_mock_ai
+        - name: MOCK_RESPONSE_DELAY
+          valueFrom:
+            configMapKeyRef:
+              name: desktop-pet-config
+              key: mock_response_delay
+        - name: MOCK_CPU_INTENSIVE
+          valueFrom:
+            configMapKeyRef:
+              name: desktop-pet-config
+              key: mock_cpu_intensive
+        # AI Provider configuration (optional, if using real API)
+        - name: AI_PROVIDER
+          valueFrom:
+            configMapKeyRef:
+              name: desktop-pet-config
+              key: ai_provider
+        - name: LOG_LEVEL
+          valueFrom:
+            configMapKeyRef:
+              name: desktop-pet-config
+              key: log_level
+        # API Keys (optional, if using real API)
+        - name: OPENAI_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: desktop-pet-secrets
+              key: openai_api_key
+        - name: CLAUDE_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: desktop-pet-secrets
+              key: claude_api_key
+        volumeMounts:
+        - name: data
+          mountPath: /app/data
+        - name: chromadb
+          mountPath: /app/data/chromadb
+        ports:
+        - containerPort: 8080
+          name: http
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 60  # Increased to 60 seconds (give app enough time to start)
+          periodSeconds: 10
+          timeoutSeconds: 10  # Increased timeout to 10 seconds
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 30  # Increased to 30 seconds
+          periodSeconds: 5
+          timeoutSeconds: 10  # Increased timeout to 10 seconds
+          failureThreshold: 3
+      volumes:
+      - name: data
+        persistentVolumeClaim:
+          claimName: desktop-pet-data-pvc
+      - name: chromadb
+        persistentVolumeClaim:
+          claimName: desktop-pet-chromadb-pvc
+

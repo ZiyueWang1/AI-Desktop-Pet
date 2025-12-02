@@ -205,3 +205,104 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# AI Desktop Pet - Project Specific
+
+# User data and runtime files
+data/
+!data/.gitkeep
+# Keep example configs if needed (uncomment if you want to track example configs)
+# !data/config.example.json
+# !data/personality.example.json
+
+# ChromaDB database files
+*.sqlite3
+*.sqlite3-journal
+*.bin
+data/chromadb/
+data/users/
+
+# Client data (user-specific)
+client/data/
+!client/data/.gitkeep
+
+# Binary tools (should be downloaded separately)
+kubectl
+kubectlsudo
+minikube-linux-amd64
+*.exe
+*.dmg
+*.pkg
+
+# OS-specific files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+*Zone.Identifier
+desktop.ini
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.pydevproject
+.settings/
+
+# Logs
+*.log
+logs/
+*.log.*
+
+# Environment and secrets
+.env
+.env.local
+.env.*.local
+.env.*
+*.key
+*.pem
+*.cert
+secrets/
+*.secret
+
+# Config files with API keys (keep examples only)
+data/config.json
+client/data/config.json
+!data/config.example.json
+!client/data/config.example.json
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.backup
+*.cache
+
+# Model cache (HuggingFace, SentenceTransformers)
+.cache/
+models/
+*.pt
+*.pth
+*.onnx
+transformers_cache/
+sentence_transformers_cache/
+
+# Docker
+.dockerignore
+
+# Kubernetes secrets (keep example, ignore actual)
+k8s/secret.yaml
+!k8s/secret.yaml.example
+
+# Build artifacts
+*.whl
+*.tar.gz
+dist/
+build/
+*.egg-info/

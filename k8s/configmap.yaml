@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: desktop-pet-config
+data:
+  ai_provider: "openai"
+  log_level: "INFO"
+  proactive_interval: "7200"  # 2小时（秒）
+  max_short_term_messages: "20"
+  long_term_retrieval_top_k: "3"
+  profile_update_interval: "5"  # 每5次对话更新一次
+  # API 模式配置
+  api_mode: "true"  # 启用 API 模式
+  port: "8080"
+  # Mock 模式配置（用于负载测试，不消耗 API token）
+  use_mock_ai: "true"  # 设置为 true 启用 Mock 模式
+  mock_response_delay: "1.0"  # 模拟响应延迟（秒）
+  mock_cpu_intensive: "true"  # 是否模拟 CPU 密集型处理
+
