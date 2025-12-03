@@ -1,0 +1,114 @@
+name: Deploy to AWS EC2
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:  # 允许手动触发
+
+env:
+  AWS_REGION: us-east-2  # AWS 区域
+  IMAGE_NAME: desktop-pet
+  ECR_REPOSITORY: desktop-pet  # ECR 仓库名称
+
+jobs:
+  deploy:
+    name: Build and Deploy to AWS
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build, tag, and push image to Amazon ECR
+        id: build-image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          # Build Docker image
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+          docker tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:latest
+          
+          # Push to ECR
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+          
+          echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
+
+      - name: Deploy to EC2
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+          EC2_HOST: ${{ secrets.AWS_EC2_HOST }}
+          EC2_USER: ${{ secrets.AWS_EC2_USER }}
+          EC2_SSH_KEY: ${{ secrets.AWS_EC2_SSH_KEY }}
+        run: |
+          # 设置 SSH 密钥
+          mkdir -p ~/.ssh
+          echo "$EC2_SSH_KEY" > ~/.ssh/ec2_key
+          chmod 600 ~/.ssh/ec2_key
+          
+          # 配置 SSH 不检查主机
+          ssh-keyscan -H $EC2_HOST >> ~/.ssh/known_hosts 2>/dev/null || true
+          
+          # 部署到 EC2
+          ssh -i ~/.ssh/ec2_key -o StrictHostKeyChecking=no $EC2_USER@$EC2_HOST << EOF
+            set -e
+            export ECR_REGISTRY=${{ steps.login-ecr.outputs.registry }}
+            export IMAGE_TAG=${{ github.sha }}
+            export ECR_REPOSITORY=${{ env.ECR_REPOSITORY }}
+            export AWS_REGION=${{ env.AWS_REGION }}
+            
+            # 登录到 ECR
+            echo "Logging in to ECR..."
+            aws ecr get-login-password --region \$AWS_REGION | docker login --username AWS --password-stdin \$ECR_REGISTRY
+            
+            # 拉取最新镜像
+            echo "Pulling latest image..."
+            docker pull \$ECR_REGISTRY/\$ECR_REPOSITORY:latest || docker pull \$ECR_REGISTRY/\$ECR_REPOSITORY:\$IMAGE_TAG
+            
+            # 停止旧容器
+            echo "Stopping old containers..."
+            docker-compose -f docker-compose.aws.yml down || docker-compose down || true
+            
+            # 启动新容器
+            echo "Starting new containers..."
+            docker-compose -f docker-compose.aws.yml up -d || docker-compose up -d
+            
+            # 等待服务启动
+            echo "Waiting for service to start..."
+            sleep 15
+            
+            # 健康检查
+            echo "Performing health check..."
+            for i in {1..10}; do
+              if curl -f http://localhost:8080/health 2>/dev/null; then
+                echo "✅ Health check passed!"
+                break
+              fi
+              echo "Waiting... (\$i/10)"
+              sleep 3
+            done
+            
+            # 显示容器状态
+            echo "Container status:"
+            docker-compose -f docker-compose.aws.yml ps || docker-compose ps
+          EOF
+
+      - name: Health Check
+        run: |
+          echo "✅ Deployment completed!"
+          echo "Image: ${{ steps.build-image.outputs.image }}"
+          echo "EC2 Host: ${{ secrets.AWS_EC2_HOST }}"
+

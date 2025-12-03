@@ -1,0 +1,32 @@
+# Docker Compose 配置 - AWS EC2 部署版本
+# 使用 ECR 镜像而不是本地构建
+
+version: '3.8'
+
+services:
+  desktop-pet:
+    # 使用 ECR 镜像（通过环境变量设置）
+    image: ${ECR_REGISTRY:-your-ecr-registry.dkr.ecr.us-east-1.amazonaws.com}/desktop-pet:${IMAGE_TAG:-latest}
+    container_name: ai-desktop-pet
+    volumes:
+      - ./data:/app/data
+      - ./data/chromadb:/app/data/chromadb
+      - ./data/logs:/app/data/logs
+    environment:
+      - AI_PROVIDER=${AI_PROVIDER:-openai}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - CLAUDE_API_KEY=${CLAUDE_API_KEY}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - API_MODE=true
+      - PORT=8080
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8080/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
