@@ -109,15 +109,47 @@ COMPOSE_EOF
               }
             fi
             
-            # 清理 Docker 资源以释放磁盘空间
+            # 清理 Docker 资源以释放磁盘空间（更彻底的清理）
             echo "Cleaning up Docker resources..."
+            echo "Disk space before cleanup:"
+            df -h /
+            
+            # 停止所有运行中的容器
+            sudo docker stop \$(sudo docker ps -q) 2>/dev/null || true
+            
+            # 删除所有容器
+            sudo docker rm -f \$(sudo docker ps -aq) 2>/dev/null || true
+            
+            # 删除所有未使用的镜像（包括标签为 none 的）
+            sudo docker rmi \$(sudo docker images -q) 2>/dev/null || true
+            
+            # 清理所有未使用的资源（包括构建缓存）
             sudo docker system prune -af --volumes || true
+            
+            # 清理 containerd 的未使用资源
+            sudo docker builder prune -af || true
+            
+            # 清理系统日志（如果空间仍然不足）
+            echo "Cleaning system logs..."
+            sudo journalctl --vacuum-time=1d || true
+            sudo apt-get clean || true
+            
             echo "Disk space after cleanup:"
             df -h /
+            
+            # 检查是否有足够空间（至少需要 2GB 可用）
+            AVAILABLE=\$(df / | tail -1 | awk '{print \$4}')
+            if [ "\$AVAILABLE" -lt 2097152 ]; then
+              echo "⚠️  Warning: Less than 2GB available space. Deployment may fail."
+            fi
             
             # 登录到 ECR（使用 sudo 执行 docker 命令）
             echo "Logging in to ECR..."
             aws ecr get-login-password --region \$AWS_REGION | sudo docker login --username AWS --password-stdin \$ECR_REGISTRY
+            
+            # 删除旧的 desktop-pet 镜像（如果有）以释放空间
+            echo "Removing old desktop-pet images..."
+            sudo docker images \$ECR_REGISTRY/\$ECR_REPOSITORY --format "{{.ID}}" | xargs -r sudo docker rmi -f 2>/dev/null || true
             
             # 拉取最新镜像
             echo "Pulling latest image..."

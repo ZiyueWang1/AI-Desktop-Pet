@@ -7,15 +7,17 @@ WORKDIR /build
 # Copy backend dependency files
 COPY backend/requirements.txt .
 
-# Install CPU version of PyTorch first (avoid installing CUDA version, save ~3GB)
-# Must install before other dependencies, so sentence-transformers will use the installed CPU version
-RUN pip install --user --no-cache-dir torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
+# Install dependencies WITHOUT sentence-transformers to avoid PyTorch (~1.5GB savings)
+# ChromaDB will use default embedding function instead (works fine for most use cases)
+# Create a temporary requirements file without sentence-transformers
+RUN grep -v "sentence-transformers" requirements.txt > requirements_no_torch.txt && \
+    pip install --user --no-cache-dir -r requirements_no_torch.txt && \
+    rm requirements_no_torch.txt
 
-# Install other dependencies (set environment variables to avoid downloading models)
-# Models will be downloaded to mounted volume at runtime, not in image
-ENV TRANSFORMERS_OFFLINE=1
-ENV HF_HOME=/tmp/.cache
-RUN pip install --user --no-cache-dir -r requirements.txt
+# Optional: Uncomment below if you need sentence-transformers for better embeddings
+# This will add ~1.5GB to the image size
+# RUN pip install --user --no-cache-dir torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu && \
+#     pip install --user --no-cache-dir sentence-transformers>=2.2.0
 
 # Runtime stage
 FROM python:3.10-slim
