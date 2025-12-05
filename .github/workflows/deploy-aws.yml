@@ -114,13 +114,22 @@ jobs:
             df -h /
             
             # 停止所有运行中的容器
-            sudo docker stop \$(sudo docker ps -q) 2>/dev/null || true
+            CONTAINERS=\$(sudo docker ps -q)
+            if [ -n "\$CONTAINERS" ]; then
+              sudo docker stop \$CONTAINERS 2>/dev/null || true
+            fi
             
             # 删除所有容器
-            sudo docker rm -f \$(sudo docker ps -aq) 2>/dev/null || true
+            ALL_CONTAINERS=\$(sudo docker ps -aq)
+            if [ -n "\$ALL_CONTAINERS" ]; then
+              sudo docker rm -f \$ALL_CONTAINERS 2>/dev/null || true
+            fi
             
             # 删除所有未使用的镜像（包括标签为 none 的）
-            sudo docker rmi \$(sudo docker images -q) 2>/dev/null || true
+            IMAGES=\$(sudo docker images -q)
+            if [ -n "\$IMAGES" ]; then
+              sudo docker rmi \$IMAGES 2>/dev/null || true
+            fi
             
             # 清理所有未使用的资源（包括构建缓存）
             sudo docker system prune -af --volumes || true
@@ -137,8 +146,8 @@ jobs:
             df -h /
             
             # 检查是否有足够空间（至少需要 2GB 可用）
-            AVAILABLE=\$(df / | tail -1 | awk '{print \$4}')
-            if [ "\$AVAILABLE" -lt 2097152 ]; then
+            AVAILABLE_KB=\$(df / | tail -1 | awk '{print \$4}')
+            if [ -n "\$AVAILABLE_KB" ] && [ "\$AVAILABLE_KB" -lt 2097152 ]; then
               echo "⚠️  Warning: Less than 2GB available space. Deployment may fail."
             fi
             
@@ -148,7 +157,10 @@ jobs:
             
             # 删除旧的 desktop-pet 镜像（如果有）以释放空间
             echo "Removing old desktop-pet images..."
-            sudo docker images \$ECR_REGISTRY/\$ECR_REPOSITORY --format "{{.ID}}" | xargs -r sudo docker rmi -f 2>/dev/null || true
+            OLD_IMAGES=\$(sudo docker images \$ECR_REGISTRY/\$ECR_REPOSITORY --format "{{.ID}}" 2>/dev/null || true)
+            if [ -n "\$OLD_IMAGES" ]; then
+              echo "\$OLD_IMAGES" | xargs -r sudo docker rmi -f 2>/dev/null || true
+            fi
             
             # 拉取最新镜像
             echo "Pulling latest image..."
