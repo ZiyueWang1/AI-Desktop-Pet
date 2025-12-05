@@ -67,7 +67,7 @@ jobs:
           scp -i ~/.ssh/ec2_key -o StrictHostKeyChecking=no docker-compose.aws.yml $EC2_USER@$EC2_HOST:~/docker-compose.aws.yml || true
           
           # 部署到 EC2
-          ssh -i ~/.ssh/ec2_key -o StrictHostKeyChecking=no $EC2_USER@$EC2_HOST << EOF
+          ssh -i ~/.ssh/ec2_key -o StrictHostKeyChecking=no $EC2_USER@$EC2_HOST << 'SSH_EOF'
             set -e
             export ECR_REGISTRY=${{ steps.login-ecr.outputs.registry }}
             export IMAGE_TAG=${{ github.sha }}
@@ -91,21 +91,19 @@ jobs:
               # 如果文件不存在，从 GitHub 获取或创建
               curl -o docker-compose.aws.yml https://raw.githubusercontent.com/${{ github.repository }}/${{ github.ref_name }}/docker-compose.aws.yml || {
                 echo "Failed to download docker-compose.aws.yml, creating minimal version..."
-                cat > docker-compose.aws.yml << 'COMPOSE_EOF'
-version: '3.8'
-services:
-  desktop-pet:
-    image: \${ECR_REGISTRY}/desktop-pet:\${IMAGE_TAG}
-    container_name: ai-desktop-pet
-    volumes:
-      - ./data:/app/data
-    environment:
-      - API_MODE=true
-      - PORT=8080
-    restart: unless-stopped
-    ports:
-      - "8080:8080"
-COMPOSE_EOF
+                printf 'version: '\''3.8'\''\n' > docker-compose.aws.yml
+                printf 'services:\n' >> docker-compose.aws.yml
+                printf '  desktop-pet:\n' >> docker-compose.aws.yml
+                printf '    image: ${ECR_REGISTRY}/desktop-pet:${IMAGE_TAG}\n' >> docker-compose.aws.yml
+                printf '    container_name: ai-desktop-pet\n' >> docker-compose.aws.yml
+                printf '    volumes:\n' >> docker-compose.aws.yml
+                printf '      - ./data:/app/data\n' >> docker-compose.aws.yml
+                printf '    environment:\n' >> docker-compose.aws.yml
+                printf '      - API_MODE=true\n' >> docker-compose.aws.yml
+                printf '      - PORT=8080\n' >> docker-compose.aws.yml
+                printf '    restart: unless-stopped\n' >> docker-compose.aws.yml
+                printf '    ports:\n' >> docker-compose.aws.yml
+                printf '      - "8080:8080"\n' >> docker-compose.aws.yml
               }
             fi
             
@@ -185,7 +183,7 @@ COMPOSE_EOF
             # 显示容器状态
             echo "Container status:"
             sudo docker compose -f docker-compose.aws.yml ps 2>/dev/null || sudo docker-compose -f docker-compose.aws.yml ps 2>/dev/null || sudo docker ps
-          EOF
+          SSH_EOF
 
       - name: Health Check
         run: |
