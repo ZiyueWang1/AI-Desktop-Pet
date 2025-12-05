@@ -73,9 +73,10 @@ jobs:
             export IMAGE_TAG=${{ github.sha }}
             export ECR_REPOSITORY=${{ env.ECR_REPOSITORY }}
             export AWS_REGION=${{ env.AWS_REGION }}
+            EC2_USERNAME=${{ secrets.AWS_EC2_USER }}
             
             # 确保用户在 docker 组中（如果不在）
-            sudo usermod -aG docker \$USER || true
+            sudo usermod -aG docker $EC2_USERNAME || sudo usermod -aG docker ubuntu || true
             
             # 检查 docker compose 是否可用（新版本 Docker 内置）
             if ! sudo docker compose version &> /dev/null; then
