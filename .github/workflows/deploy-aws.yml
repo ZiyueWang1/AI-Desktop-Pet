@@ -62,6 +62,10 @@ jobs:
           # 配置 SSH 不检查主机
           ssh-keyscan -H $EC2_HOST >> ~/.ssh/known_hosts 2>/dev/null || true
           
+          # 将 docker-compose.aws.yml 复制到 EC2
+          echo "Copying docker-compose.aws.yml to EC2..."
+          scp -i ~/.ssh/ec2_key -o StrictHostKeyChecking=no docker-compose.aws.yml $EC2_USER@$EC2_HOST:~/docker-compose.aws.yml || true
+          
           # 部署到 EC2
           ssh -i ~/.ssh/ec2_key -o StrictHostKeyChecking=no $EC2_USER@$EC2_HOST << EOF
             set -e
@@ -72,6 +76,38 @@ jobs:
             
             # 确保用户在 docker 组中（如果不在）
             sudo usermod -aG docker \$USER || true
+            
+            # 检查 docker compose 是否可用（新版本 Docker 内置）
+            if ! sudo docker compose version &> /dev/null; then
+              echo "Installing docker-compose..."
+              sudo apt-get update -qq
+              sudo apt-get install -y docker-compose-plugin || sudo apt-get install -y docker-compose || true
+            fi
+            
+            # 确保 docker-compose.aws.yml 文件存在
+            cd ~
+            if [ ! -f docker-compose.aws.yml ]; then
+              echo "docker-compose.aws.yml not found, creating it..."
+              # 如果文件不存在，从 GitHub 获取或创建
+              curl -o docker-compose.aws.yml https://raw.githubusercontent.com/${{ github.repository }}/${{ github.ref_name }}/docker-compose.aws.yml || {
+                echo "Failed to download docker-compose.aws.yml, creating minimal version..."
+                cat > docker-compose.aws.yml << 'COMPOSE_EOF'
+version: '3.8'
+services:
+  desktop-pet:
+    image: \${ECR_REGISTRY}/desktop-pet:\${IMAGE_TAG}
+    container_name: ai-desktop-pet
+    volumes:
+      - ./data:/app/data
+    environment:
+      - API_MODE=true
+      - PORT=8080
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+COMPOSE_EOF
+              }
+            fi
             
             # 清理 Docker 资源以释放磁盘空间
             echo "Cleaning up Docker resources..."
@@ -87,17 +123,17 @@ jobs:
             echo "Pulling latest image..."
             sudo docker pull \$ECR_REGISTRY/\$ECR_REPOSITORY:latest || sudo docker pull \$ECR_REGISTRY/\$ECR_REPOSITORY:\$IMAGE_TAG
             
-            # 停止旧容器
+            # 停止旧容器（优先使用 docker compose，如果失败则尝试 docker-compose）
             echo "Stopping old containers..."
-            sudo docker-compose -f docker-compose.aws.yml down || sudo docker-compose down || true
+            sudo docker compose -f docker-compose.aws.yml down 2>/dev/null || sudo docker-compose -f docker-compose.aws.yml down 2>/dev/null || true
             
             # 再次清理未使用的镜像（保留当前需要的）
             echo "Cleaning up unused images..."
             sudo docker image prune -af || true
             
-            # 启动新容器
+            # 启动新容器（优先使用 docker compose，如果失败则尝试 docker-compose）
             echo "Starting new containers..."
-            sudo docker-compose -f docker-compose.aws.yml up -d || sudo docker-compose up -d
+            sudo docker compose -f docker-compose.aws.yml up -d || sudo docker-compose -f docker-compose.aws.yml up -d
             
             # 等待服务启动
             echo "Waiting for service to start..."
@@ -116,7 +152,7 @@ jobs:
             
             # 显示容器状态
             echo "Container status:"
-            sudo docker-compose -f docker-compose.aws.yml ps || sudo docker-compose ps
+            sudo docker compose -f docker-compose.aws.yml ps 2>/dev/null || sudo docker-compose -f docker-compose.aws.yml ps 2>/dev/null || sudo docker ps
           EOF
 
       - name: Health Check
