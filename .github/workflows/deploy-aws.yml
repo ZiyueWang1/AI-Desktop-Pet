@@ -73,6 +73,12 @@ jobs:
             # 确保用户在 docker 组中（如果不在）
             sudo usermod -aG docker \$USER || true
             
+            # 清理 Docker 资源以释放磁盘空间
+            echo "Cleaning up Docker resources..."
+            sudo docker system prune -af --volumes || true
+            echo "Disk space after cleanup:"
+            df -h /
+            
             # 登录到 ECR（使用 sudo 执行 docker 命令）
             echo "Logging in to ECR..."
             aws ecr get-login-password --region \$AWS_REGION | sudo docker login --username AWS --password-stdin \$ECR_REGISTRY
@@ -84,6 +90,10 @@ jobs:
             # 停止旧容器
             echo "Stopping old containers..."
             sudo docker-compose -f docker-compose.aws.yml down || sudo docker-compose down || true
+            
+            # 再次清理未使用的镜像（保留当前需要的）
+            echo "Cleaning up unused images..."
+            sudo docker image prune -af || true
             
             # 启动新容器
             echo "Starting new containers..."
