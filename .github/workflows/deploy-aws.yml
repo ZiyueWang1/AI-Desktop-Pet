@@ -70,21 +70,24 @@ jobs:
             export ECR_REPOSITORY=${{ env.ECR_REPOSITORY }}
             export AWS_REGION=${{ env.AWS_REGION }}
             
-            # 登录到 ECR
+            # 确保用户在 docker 组中（如果不在）
+            sudo usermod -aG docker \$USER || true
+            
+            # 登录到 ECR（使用 sudo 执行 docker 命令）
             echo "Logging in to ECR..."
-            aws ecr get-login-password --region \$AWS_REGION | docker login --username AWS --password-stdin \$ECR_REGISTRY
+            aws ecr get-login-password --region \$AWS_REGION | sudo docker login --username AWS --password-stdin \$ECR_REGISTRY
             
             # 拉取最新镜像
             echo "Pulling latest image..."
-            docker pull \$ECR_REGISTRY/\$ECR_REPOSITORY:latest || docker pull \$ECR_REGISTRY/\$ECR_REPOSITORY:\$IMAGE_TAG
+            sudo docker pull \$ECR_REGISTRY/\$ECR_REPOSITORY:latest || sudo docker pull \$ECR_REGISTRY/\$ECR_REPOSITORY:\$IMAGE_TAG
             
             # 停止旧容器
             echo "Stopping old containers..."
-            docker-compose -f docker-compose.aws.yml down || docker-compose down || true
+            sudo docker-compose -f docker-compose.aws.yml down || sudo docker-compose down || true
             
             # 启动新容器
             echo "Starting new containers..."
-            docker-compose -f docker-compose.aws.yml up -d || docker-compose up -d
+            sudo docker-compose -f docker-compose.aws.yml up -d || sudo docker-compose up -d
             
             # 等待服务启动
             echo "Waiting for service to start..."
@@ -103,7 +106,7 @@ jobs:
             
             # 显示容器状态
             echo "Container status:"
-            docker-compose -f docker-compose.aws.yml ps || docker-compose ps
+            sudo docker-compose -f docker-compose.aws.yml ps || sudo docker-compose ps
           EOF
 
       - name: Health Check
