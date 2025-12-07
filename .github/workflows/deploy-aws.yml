@@ -114,21 +114,21 @@ jobs:
             df -h /
             
             # 停止所有运行中的容器
-            CONTAINERS=\$(sudo docker ps -q)
-            if [ -n "\$CONTAINERS" ]; then
-              sudo docker stop \$CONTAINERS 2>/dev/null || true
+            CONTAINERS=$(sudo docker ps -q)
+            if [ -n "$CONTAINERS" ]; then
+              sudo docker stop $CONTAINERS 2>/dev/null || true
             fi
             
             # 删除所有容器
-            ALL_CONTAINERS=\$(sudo docker ps -aq)
-            if [ -n "\$ALL_CONTAINERS" ]; then
-              sudo docker rm -f \$ALL_CONTAINERS 2>/dev/null || true
+            ALL_CONTAINERS=$(sudo docker ps -aq)
+            if [ -n "$ALL_CONTAINERS" ]; then
+              sudo docker rm -f $ALL_CONTAINERS 2>/dev/null || true
             fi
             
             # 删除所有未使用的镜像（包括标签为 none 的）
-            IMAGES=\$(sudo docker images -q)
-            if [ -n "\$IMAGES" ]; then
-              sudo docker rmi \$IMAGES 2>/dev/null || true
+            IMAGES=$(sudo docker images -q)
+            if [ -n "$IMAGES" ]; then
+              sudo docker rmi $IMAGES 2>/dev/null || true
             fi
             
             # 清理所有未使用的资源（包括构建缓存）
@@ -153,18 +153,18 @@ jobs:
             
             # 登录到 ECR（使用 sudo 执行 docker 命令）
             echo "Logging in to ECR..."
-            aws ecr get-login-password --region \$AWS_REGION | sudo docker login --username AWS --password-stdin \$ECR_REGISTRY
+            aws ecr get-login-password --region $AWS_REGION | sudo docker login --username AWS --password-stdin $ECR_REGISTRY
             
             # 删除旧的 desktop-pet 镜像（如果有）以释放空间
             echo "Removing old desktop-pet images..."
-            OLD_IMAGES=\$(sudo docker images \$ECR_REGISTRY/\$ECR_REPOSITORY --format "{{.ID}}" 2>/dev/null || true)
-            if [ -n "\$OLD_IMAGES" ]; then
-              echo "\$OLD_IMAGES" | xargs -r sudo docker rmi -f 2>/dev/null || true
+            OLD_IMAGES=$(sudo docker images $ECR_REGISTRY/$ECR_REPOSITORY --format "{{.ID}}" 2>/dev/null || true)
+            if [ -n "$OLD_IMAGES" ]; then
+              echo "$OLD_IMAGES" | xargs -r sudo docker rmi -f 2>/dev/null || true
             fi
             
             # 拉取最新镜像
             echo "Pulling latest image..."
-            sudo docker pull \$ECR_REGISTRY/\$ECR_REPOSITORY:latest || sudo docker pull \$ECR_REGISTRY/\$ECR_REPOSITORY:\$IMAGE_TAG
+            sudo docker pull $ECR_REGISTRY/$ECR_REPOSITORY:latest || sudo docker pull $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
             
             # 停止旧容器（优先使用 docker compose，如果失败则尝试 docker-compose）
             echo "Stopping old containers..."
@@ -189,7 +189,7 @@ jobs:
                 echo "✅ Health check passed!"
                 break
               fi
-              echo "Waiting... (\$i/10)"
+              echo "Waiting... ($i/10)"
               sleep 3
             done
             
