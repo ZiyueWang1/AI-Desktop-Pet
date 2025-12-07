@@ -7,8 +7,8 @@ spec:
     apiVersion: apps/v1
     kind: Deployment
     name: desktop-pet
-  minReplicas: 1
-  maxReplicas: 5
+  minReplicas: 2  # 最小副本数增加到2以确保高可用性
+  maxReplicas: 10  # 最大副本数增加到10以支持更高负载
   metrics:
   - type: Resource
     resource:
@@ -22,4 +22,25 @@ spec:
       target:
         type: Utilization
         averageUtilization: 80
+  behavior:  # 添加扩缩容行为配置以实现快速响应
+    scaleDown:
+      stabilizationWindowSeconds: 300  # 缩容稳定窗口：5分钟
+      policies:
+      - type: Percent
+        value: 50  # 每次最多缩容50%
+        periodSeconds: 60
+      - type: Pods
+        value: 1  # 或每次最多减少1个Pod
+        periodSeconds: 60
+      selectPolicy: Min  # 选择更保守的策略
+    scaleUp:
+      stabilizationWindowSeconds: 0  # 快速扩容，无稳定窗口
+      policies:
+      - type: Percent
+        value: 100  # 每次最多扩容100%（翻倍）
+        periodSeconds: 15
+      - type: Pods
+        value: 2  # 或每次最多增加2个Pod
+        periodSeconds: 15
+      selectPolicy: Max  # 选择更激进的策略
 

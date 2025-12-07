@@ -4,6 +4,11 @@ metadata:
   name: desktop-pet-service
   labels:
     app: desktop-pet
+  annotations:
+    # 负载均衡器配置（根据云提供商调整）
+    service.beta.kubernetes.io/aws-load-balancer-type: "nlb"
+    # 或对于其他云提供商：
+    # cloud.google.com/load-balancer-type: "Internal"
 spec:
   selector:
     app: desktop-pet
@@ -12,9 +17,12 @@ spec:
     port: 8080
     targetPort: 8080
     name: http
-  type: ClusterIP
-  # 如果需要外部访问，可以使用 NodePort 或 LoadBalancer
-  # type: NodePort
-  # 或
-  # type: LoadBalancer
+  type: LoadBalancer  # 使用 LoadBalancer 实现负载均衡
+  sessionAffinity: ClientIP  # 会话亲和性（可选，用于有状态应用）
+  sessionAffinityConfig:
+    clientIP:
+      timeoutSeconds: 10800  # 3小时
+  # 负载均衡器配置
+  loadBalancerIP: ""  # 可选：指定静态IP
+  externalTrafficPolicy: Cluster  # 或 Local（用于保持源IP）
 

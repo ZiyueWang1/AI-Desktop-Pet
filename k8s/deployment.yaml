@@ -83,22 +83,36 @@ spec:
         ports:
         - containerPort: 8080
           name: http
+        # 启动探针：给应用足够时间启动
+        startupProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 30  # 最多等待5分钟（30 * 10秒）
+          successThreshold: 1
+        # 存活探针：检查应用是否还在运行
         livenessProbe:
           httpGet:
             path: /health
             port: 8080
-          initialDelaySeconds: 60  # Increased to 60 seconds (give app enough time to start)
+          initialDelaySeconds: 60  # 等待启动探针成功后60秒再开始
           periodSeconds: 10
-          timeoutSeconds: 10  # Increased timeout to 10 seconds
+          timeoutSeconds: 5
           failureThreshold: 3
+          successThreshold: 1
+        # 就绪探针：检查应用是否准备好接收流量
         readinessProbe:
           httpGet:
             path: /health
             port: 8080
-          initialDelaySeconds: 30  # Increased to 30 seconds
+          initialDelaySeconds: 30
           periodSeconds: 5
-          timeoutSeconds: 10  # Increased timeout to 10 seconds
+          timeoutSeconds: 5
           failureThreshold: 3
+          successThreshold: 1
       volumes:
       - name: data
         persistentVolumeClaim:

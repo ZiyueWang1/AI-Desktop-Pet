@@ -306,3 +306,4 @@ k8s/secret.yaml
 dist/
 build/
 *.egg-info/
+.claude/

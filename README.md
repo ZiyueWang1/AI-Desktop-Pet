@@ -197,6 +197,31 @@ docker run -p 8080:8080 \
   desktop-pet:latest
 ```
 
+Or use Docker Compose:
+```bash
+docker-compose up -d
+```
+
+### AWS EC2 (Free Tier) 🆓
+
+Deploy to AWS EC2 using GitHub Actions - **completely free**!
+
+**Quick Start**: See [AWS Quick Start Guide](docs/AWS_QUICK_START.md)
+
+**Features**:
+- ✅ Automatic deployment on GitHub push
+- ✅ Uses AWS Free Tier (EC2 t2.micro + ECR)
+- ✅ Zero cost for 12 months
+- ✅ Production-ready CI/CD
+
+**Setup Steps**:
+1. Create EC2 instance (t2.micro)
+2. Create ECR repository
+3. Configure GitHub Secrets
+4. Push code → Auto deploy! 🚀
+
+See [AWS Deployment Guide](docs/AWS_DEPLOYMENT.md) for detailed instructions.
+
 ### Kubernetes
 
 Deploy to Kubernetes:
@@ -217,6 +242,11 @@ kubectl apply -f k8s/service.yaml
 # Optional: Apply HPA for auto-scaling
 kubectl apply -f k8s/hpa.yaml
 ```
+
+### CI/CD
+
+- **Jenkins**: See [CI/CD Documentation](docs/CI_CD.md)
+- **GitHub Actions**: Automatic deployment to AWS (see `.github/workflows/deploy-aws.yml`)
 
 ## Development
 

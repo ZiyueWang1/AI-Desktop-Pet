@@ -7,14 +7,24 @@ WORKDIR /build
 # Copy backend dependency files
 COPY backend/requirements.txt .
 
-# Install dependencies WITHOUT sentence-transformers to avoid PyTorch (~1.5GB savings)
-# ChromaDB will use default embedding function instead (works fine for most use cases)
-# Create a temporary requirements file without sentence-transformers
-RUN grep -v "sentence-transformers" requirements.txt > requirements_no_torch.txt && \
-    pip install --user --no-cache-dir -r requirements_no_torch.txt && \
-    rm requirements_no_torch.txt
+# Install only essential dependencies for learning/testing
+# Remove unnecessary dependencies to minimize image size:
+# - sentence-transformers (requires PyTorch, ~1.5GB) - use ChromaDB default embedding
+# - tiktoken (not used in code) - remove
+# - AI provider SDKs (if using Mock mode) - optional, can remove for learning
+# Create optimized requirements file
+RUN grep -v "sentence-transformers" requirements.txt | \
+    grep -v "tiktoken" | \
+    grep -v "^#" | \
+    grep -v "^$" > requirements_optimized.txt && \
+    pip install --user --no-cache-dir -r requirements_optimized.txt && \
+    rm requirements_optimized.txt
 
-# Optional: Uncomment below if you need sentence-transformers for better embeddings
+# Note: AI provider SDKs (openai, anthropic, google-generativeai) are kept because
+# they are imported in the code. If you only use Mock mode, you could make these
+# imports optional in the code to further reduce image size.
+
+# Optional: If you need sentence-transformers for better embeddings, uncomment below:
 # This will add ~1.5GB to the image size
 # RUN pip install --user --no-cache-dir torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu && \
 #     pip install --user --no-cache-dir sentence-transformers>=2.2.0

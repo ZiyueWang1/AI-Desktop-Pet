@@ -1,0 +1,23 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: desktop-pet-pdb
+  labels:
+    app: desktop-pet
+spec:
+  minAvailable: 1  # 至少保持1个Pod可用，确保99.9%可用性
+  selector:
+    matchLabels:
+      app: desktop-pet
+---
+# 可选：使用百分比方式
+# apiVersion: policy/v1
+# kind: PodDisruptionBudget
+# metadata:
+#   name: desktop-pet-pdb-percent
+# spec:
+#   minAvailable: 50%  # 至少保持50%的Pod可用
+#   selector:
+#     matchLabels:
+#       app: desktop-pet
+
